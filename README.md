@@ -1,3 +1,7 @@
+# Live Demo: https://purple-mountain-c545.rafay11hadi.workers.dev
+
+Click this link to use the deployed site and test it out!
+
 # cf_ai_chat_canvas
 
 A compact Cloudflare AI demo: a Worker orchestrates Workers AI (Llama 3.3) with a Durable Object for per-session memory. The static UI is served via asset binding, giving you a full-stack, stateful chat experience on Cloudflare edge.
@@ -47,5 +51,3 @@ A compact Cloudflare AI demo: a Worker orchestrates Workers AI (Llama 3.3) with 
 - The Worker uses a system prompt from `wrangler.toml` (`SYSTEM_PROMPT`). Adjust it to fit your use case.
 - Durable Object migrations are declared in `wrangler.toml` (`tag = "v1"`, `new_classes = ["SessionDO"]`). If you change the class name, bump the tag.
 
-## License
-MIT
