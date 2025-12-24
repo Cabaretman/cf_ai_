@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cf_ai_chat_canvas · Cloudflare Workers AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c1221;
+      --card: rgba(255, 255, 255, 0.04);
+      --muted: #9ab6c5;
+      --primary: #4ade80;
+      --primary-strong: #22c55e;
+      --accent: #f59e0b;
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+      --blur: blur(18px);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(78, 222, 128, 0.08), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.09), transparent 32%),
+                  radial-gradient(circle at 50% 70%, rgba(59, 130, 246, 0.07), transparent 30%),
+                  var(--bg);
+      color: #e9edf2;
+      display: grid;
+      place-items: center;
+      padding: 32px 20px 60px;
+    }
+    .page {
+      width: min(1100px, 100%);
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .page { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--blur);
+    }
+    header {
+      grid-column: 1 / -1;
+      padding: 20px 24px;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 8px 0;
+    }
+    h1 { margin: 0; font-size: 32px; line-height: 1.2; }
+    .lede { margin: 10px 0 14px 0; color: var(--muted); max-width: 760px; }
+    .status-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: #d4ffe2;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pill strong { color: #fff; }
+
+    .chat-shell { display: grid; grid-template-rows: 1fr auto; min-height: 560px; }
+    .transcript {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .bubble {
+      max-width: 78%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      line-height: 1.45;
+      font-size: 15px;
+      white-space: pre-wrap;
+    }
+    .bubble.user { margin-left: auto; background: rgba(74, 222, 128, 0.08); border-color: rgba(74, 222, 128, 0.25); }
+    .bubble.assistant { margin-right: auto; }
+    .bubble.system { margin-right: auto; color: var(--muted); font-size: 14px; }
+
+    .composer {
+      border-top: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(12, 18, 33, 0.8), rgba(12, 18, 33, 0.94));
+      border-radius: 0 0 18px 18px;
+    }
+    .composer input {
+      flex: 1;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      outline: none;
+      font-size: 15px;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .composer input:focus { border-color: rgba(74, 222, 128, 0.55); background: rgba(255, 255, 255, 0.08); }
+    .composer button {
+      padding: 13px 16px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(120deg, var(--primary), var(--primary-strong));
+      color: #0b140e;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 110px;
+      box-shadow: 0 8px 30px rgba(74, 222, 128, 0.25);
+      transition: transform 0.12s ease, box-shadow 0.2s ease;
+    }
+    .composer button:active { transform: translateY(1px); box-shadow: 0 4px 14px rgba(74, 222, 128, 0.25); }
+    .composer small { color: var(--muted); }
+
+    .panel { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .panel h3 { margin: 4px 0 0 0; }
+    .panel p { margin: 6px 0; color: var(--muted); line-height: 1.5; }
+    .list { margin: 0; padding-left: 18px; color: var(--muted); line-height: 1.5; }
+    .spark { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(150deg, rgba(74, 222, 128, 0.4), rgba(245, 158, 11, 0.35)); border: 1px solid var(--border); display: grid; place-items: center; color: #0c1221; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="card">
+      <p class="eyebrow">Cloudflare Workers AI · Durable Objects · Pages</p>
+      <h1>Signal Canvas — Stateful AI Microapp</h1>
+      <p class="lede">Chat with a Workers AI model (Llama 3.3) orchestrated by a Worker. Each session is anchored by a Durable Object for memory, so the assistant remembers the ongoing thread.</p>
+      <div class="status-row">
+        <span class="pill">Live workflow<span class="spark">⚡</span></span>
+        <span class="pill">Session <strong id="session-id">—</strong></span>
+        <span class="pill">Stateful memory via Durable Object</span>
+      </div>
+    </header>
+
+    <section class="card chat-shell">
+      <div class="transcript" id="transcript"></div>
+      <form class="composer" id="composer">
+        <input id="message" name="message" autocomplete="off" placeholder="Ask for plans, ideas, or code walkthroughs" />
+        <button type="submit" id="send">Send</button>
+      </form>
+    </section>
+
+    <aside class="card panel">
+      <div>
+        <h3>How it works</h3>
+        <p>The UI talks to <strong>/api/chat</strong> on the Worker. The Worker calls Workers AI (Llama 3.3) and persists the turn-by-turn log in a Durable Object so memory survives per session.</p>
+      </div>
+      <div>
+        <h3>What to try</h3>
+        <ul class="list">
+          <li>Ask for a 30-minute learning plan with checkpoints.</li>
+          <li>Request a short JSON task list and refine it in a second turn.</li>
+          <li>Keep chatting to see memory persist within this session.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Tech highlights</h3>
+        <ul class="list">
+          <li>Workers AI: @cf/meta/llama-3.3-70b-instruct</li>
+          <li>Durable Object: chat history and session identity</li>
+          <li>Pages asset binding serves this interface</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+
+    const transcript = document.getElementById("transcript");
+    const composer = document.getElementById("composer");
+    const input = document.getElementById("message");
+    const sendBtn = document.getElementById("send");
+    const sessionLabel = document.getElementById("session-id");
+
+    let sessionId;
+    let busy = false;
+
+    function addMessage(role, text) {
+      const bubble = document.createElement("div");
+      bubble.className = `bubble ${role}`;
+      bubble.textContent = text;
+      transcript.appendChild(bubble);
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    async function bootstrapSession() {
+      try {
+        const res = await fetch("/api/session", { method: "POST" });
+        const data = await res.json();
+        sessionId = data.sessionId;
+        sessionLabel.textContent = sessionId.slice(0, 8) + "…";
+        addMessage("assistant", "Hello! I am running on Workers AI with a Durable Object keeping our thread. What should we explore?");
+      } catch (err) {
+        addMessage("assistant", "Could not start session. Check your Worker logs.");
+      }
+    }
+
+    async function sendMessage(text) {
+      if (!text || busy) return;
+      busy = true;
+      sendBtn.textContent = "Thinking…";
+      sendBtn.disabled = true;
+
+      addMessage("user", text);
+      input.value = "";
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, sessionId }),
+        });
+        const data = await res.json();
+        sessionId = data.sessionId;
+        sessionLabel.textContent = sessionId.slice(0, 8) + "…";
+        addMessage("assistant", data.reply || "No reply returned.");
+      } catch (err) {
+        addMessage("assistant", "Request failed. Check network or wrangler dev output.");
+      } finally {
+        busy = false;
+        sendBtn.textContent = "Send";
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    composer.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      sendMessage(text);
+    });
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        const text = input.value.trim();
+        sendMessage(text);
+      }
+    });
+
+    bootstrapSession();
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+name = "purple-mountain-c545"
+main = "src/worker.js"
+compatibility_date = "2024-11-21"
+
+[assets]
+binding = "ASSETS"
+directory = "./public"
+
+[ai]
+binding = "AI"
+
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["SessionDO"]
+
+[vars]
+SYSTEM_PROMPT = "You are a concise, upbeat AI guide. Keep replies short, actionable, and insert numbered steps when giving instructions."

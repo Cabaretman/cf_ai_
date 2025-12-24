@@ -1,0 +1,13 @@
+{
+  "name": "cf_ai_chat_canvas",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --remote",
+    "dev:local": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.56.0"
+  }
+}
